@@ -16,7 +16,7 @@ interface Resume {
 
 interface Feedback {
     overallScore: number;
-    ATS: {
+    ATS: {F
         score: number;
         tips: {
             type: "good" | "improve";

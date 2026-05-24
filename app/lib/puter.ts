@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { analyzeResume } from "./gemini";
 
 declare global {
     interface Window {
@@ -73,9 +74,9 @@ interface PuterStore {
             options?: PuterChatOptions
         ) => Promise<AIResponse | undefined>;
         feedback: (
-            path: string,
+            file: File | Blob,
             message: string
-        ) => Promise<AIResponse | undefined>;
+        ) => Promise<Feedback | undefined>;
         img2txt: (
             image: string | File | Blob,
             testMode?: boolean
@@ -323,31 +324,14 @@ export const usePuterStore = create<PuterStore>((set, get) => {
         >;
     };
 
-    const feedback = async (path: string, message: string) => {
-        const puter = getPuter();
-        if (!puter) {
-            setError("Puter.js not available");
-            return;
+    const feedback = async (file: File | Blob, message: string) => {
+        try {
+            return await analyzeResume(file, message);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Resume analysis failed";
+            setError(msg);
+            return undefined;
         }
-
-        return puter.ai.chat(
-            [
-                {
-                    role: "user",
-                    content: [
-                        {
-                            type: "file",
-                            puter_path: path,
-                        },
-                        {
-                            type: "text",
-                            text: message,
-                        },
-                    ],
-                },
-            ],
-            { model: "claude-sonnet-4" }
-        ) as Promise<AIResponse | undefined>;
     };
 
     const img2txt = async (image: string | File | Blob, testMode?: boolean) => {
@@ -434,7 +418,7 @@ export const usePuterStore = create<PuterStore>((set, get) => {
                 testMode?: boolean,
                 options?: PuterChatOptions
             ) => chat(prompt, imageURL, testMode, options),
-            feedback: (path: string, message: string) => feedback(path, message),
+            feedback: (file: File | Blob, message: string) => feedback(file, message),
             img2txt: (image: string | File | Blob, testMode?: boolean) =>
                 img2txt(image, testMode),
         },
